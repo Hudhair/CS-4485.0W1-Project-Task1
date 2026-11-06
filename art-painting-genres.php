@@ -3,7 +3,7 @@ session_start();
 require_once('config.php'); 
 
 /*
- Displays the list of artist links on the left-side of page
+ Displays the list of genre links on the left-side of page
 */
 function outputGenres() {
    try {
@@ -28,7 +28,7 @@ function outputGenres() {
 /*
  Deletes a painting-genre link from the database
 */
-function deletePainting() {
+function deletePaintingGenre() {
   if (isset($_POST['delete']) && isset($_POST['id']))
   {
     $pdo = new PDO(DBCONNSTRING,DBUSER,DBPASS);
@@ -168,11 +168,11 @@ function sanitize_post_value($pdo, $var)
                       <input type="submit" value="ADD RECORD">
      </pre></form>
    _END; ?>
-   <?php deletePainting(); ?>
+   <?php deletePaintingGenre(); ?>
    <?php addPaintingGenre(); ?>
    <main class="ui container">
       <div class="ui secondary segment">
-         <?php echo '<h1>Welcome to the Art Gallery, ' . $_SESSION['forename'] . ' ' . $_SESSION['surname'] . '</h1>'; ?>
+         <?php echo '<h1>Welcome to the Art Gallery, Genre-Painting section' . $_SESSION['forename'] . ' ' . $_SESSION['surname'] . '</h1>'; ?>
       </div>
       <div class="ui segment">
          <div class="ui grid">
