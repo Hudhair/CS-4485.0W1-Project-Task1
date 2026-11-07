@@ -13,7 +13,7 @@
   <div class="ui segment">
     <h2 class="ui header">Browse the Art Gallery</h2>
     <p>Select a section to view records and use the available add and delete features.</p>
-    <div class="ui three stackable cards">
+    <div class="ui four stackable cards">
       <a class="ui card" href="artist.php">
         <div class="content"><div class="header">Artists</div><div class="description">View, add, and manage artist records.</div></div>
         <div class="extra content">Open Artists</div>
@@ -25,6 +25,13 @@
       <a class="ui card" href="genres.php">
         <div class="content"><div class="header">Genres</div><div class="description">View, add, and manage genre records.</div></div>
         <div class="extra content">Open Genres</div>
+      </a>
+      <a class="ui card" href="galleries.php">
+        <div class="content">
+            <div class="header">Galleries</div>
+            <div class="description">View gallery details, add galleries, and manage gallery records.</div>
+        </div>
+        <div class="extra content">Open Galleries</div>
       </a>
     </div>
   </div>
