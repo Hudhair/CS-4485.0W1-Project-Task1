@@ -49,7 +49,24 @@
         </div>
         <div class="extra content">Open Subjects</div>
       </a>
-
+      <a class="ui card" href="art-painting-genres.php">
+        <div class="content">
+          <div class="header">Painting-Genres</div>
+          <div class="description">
+            View painting-genre details, add new links between paintings and genres, and delete painting-genre links.
+          </div>
+        </div>
+        <div class="extra content">Open Painting-Genres</div>
+      </a>
+            <a class="ui card" href="art-painting-subjects.php">
+        <div class="content">
+          <div class="header">Painting-Subjects</div>
+          <div class="description">
+            View painting-subject details, add new links between paintings and subjects, and delete painting-subject links.
+          </div>
+        </div>
+        <div class="extra content">Open Painting-Subjects</div>
+      </a>
     </div>
   </div>
 </main>
