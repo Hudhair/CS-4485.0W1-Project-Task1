@@ -33,6 +33,13 @@
         </div>
         <div class="extra content">Open Galleries</div>
       </a>
+      <a class="ui card" href="eras.php">
+        <div class="content">
+            <div class="header">Eras</div>
+            <div class="description">View era details, add eras, and manage era records.</div>
+        </div>
+        <div class="extra content">Open Eras</div>
+      </a>
     </div>
   </div>
 </main>
