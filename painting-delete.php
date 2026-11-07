@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         painting_require_csrf();
         if ((string)($_POST['PaintingID'] ?? '') !== (string)$id) throw new RuntimeException('Painting ID mismatch.');
-        // Check again at deletion time, not only when rendering the confirmation page.
+        // check again at deletion time
         $db->beginTransaction();
         $genres = painting_count($db, 'PaintingGenres', $id);
         $subjects = painting_count($db, 'PaintingSubjects', $id);

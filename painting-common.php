@@ -1,5 +1,5 @@
 <?php
-// Shared Paintings helpers for Team 45. Paintings pages only.
+// helper for Paintings to add/delete/edit/view
 require_once __DIR__ . '/config.php';
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 if (empty($_SESSION['paintings_csrf'])) $_SESSION['paintings_csrf'] = bin2hex(random_bytes(32));
@@ -10,7 +10,6 @@ function painting_url($id = null) {
     return 'paintings.php' . ($id !== null ? '?id=' . (int)$id : '');
 }
 function painting_exists(PDO $db, $table, $key, $id) {
-    // Table and column names are fixed in the calls below (not user-controlled).
     $stmt = $db->prepare("SELECT 1 FROM `$table` WHERE `$key` = ? LIMIT 1");
     $stmt->execute([$id]);
     return (bool)$stmt->fetchColumn();
@@ -53,13 +52,12 @@ function painting_fields(PDO $db, $post, $isNew) {
         }
         $values[$key] = $id;
     }
-    // Shapes in the supplied SQL has ShapeName only, no ShapeID column.
-    // Paintings.ShapeID is the 1-based ordinal of its row in the imported Shapes table.
+    
     $shape = painting_optional_int($post['ShapeID'] ?? '', 'ShapeID', 1);
     $shapeCount = (int)$db->query('SELECT COUNT(*) FROM Shapes')->fetchColumn();
     if ($shape !== null && $shape > $shapeCount) throw new RuntimeException('ShapeID is not listed in Shapes.');
     $values['ShapeID'] = $shape;
-    // The imported art DB uses a nullable ArtistID, but a selected existing artist is recommended.
+    
     foreach (['YearOfWork','Width','Height'] as $key) {
         $values[$key] = painting_optional_int($post[$key] ?? '', $key);
     }
@@ -163,8 +161,15 @@ function painting_header($title) { ?>
 </head><body><main class="ui container">
 <div class="ui secondary segment"><h1>Art Gallery - <?= painting_h($title) ?></h1>
 <div class="ui small horizontal link list page-links">
-<a class="item" href="index.php">Home</a><a class="item" href="artist.php">Artists</a>
-<a class="item" href="paintings.php">Paintings</a><a class="item" href="genres.php">Genres</a>
+<a class="item" href="index.php">Home</a>
+<a class="item" href="artist.php">Artists</a>
+<a class="item" href="paintings.php">Paintings</a>
+<a class="item" href="genres.php">Genres</a>
+<a class="item" href="eras.php">Eras</a>
+<a class="item" href="galleries.php">Galleries</a>
+<a class="item" href="subjects.php">Subjects</a>
+<a class="item" href="art-painting-genres.php">Painting Genres</a>
+<a class="item" href="art-painting-subjects.php">Painting Subjects</a>
 </div></div>
 <?php }
 function painting_footer() { echo '</main></body></html>'; }
