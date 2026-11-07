@@ -26,6 +26,17 @@
         <div class="content"><div class="header">Genres</div><div class="description">View, add, and manage genre records.</div></div>
         <div class="extra content">Open Genres</div>
       </a>
+      
+      <a class="ui card" href="subjects.php">
+        <div class="content">
+          <div class="header">Subjects</div>
+          <div class="description">
+            View subjects, select subject details, add new subjects, and delete subjects.
+          </div>
+        </div>
+        <div class="extra content">Open Subjects</div>
+      </a>
+
     </div>
   </div>
 </main>
