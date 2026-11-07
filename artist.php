@@ -276,8 +276,8 @@
           <a class="item" href="eras.php">Eras</a>
 	  <a class="item" href="gallaries.php">Gallaries</a>
 	  <a class="item" href="subjects.php">Subjects</a>
-          <a class="item" href="paintinggenres.php">Painting Genres</a>
-	  <a class="item" href="paintingeras.php">Painting Eras</a>
+          <a class="item" href="art-painting-genres.php">Painting Genres</a>
+	  <a class="item" href="art-painting-subjects.php">Painting Subjects</a>
          </div>
 
       </div>
