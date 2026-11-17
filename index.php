@@ -13,7 +13,7 @@
   <div class="ui segment">
     <h2 class="ui header">Browse the Art Gallery</h2>
     <p>Select a section to view records and use the available add and delete features.</p>
-    <div class="ui three stackable cards">
+    <div class="ui four stackable cards">
       <a class="ui card" href="artist.php">
         <div class="content"><div class="header">Artists</div><div class="description">View, add, and manage artist records.</div></div>
         <div class="extra content">Open Artists</div>
@@ -25,6 +25,47 @@
       <a class="ui card" href="genres.php">
         <div class="content"><div class="header">Genres</div><div class="description">View, add, and manage genre records.</div></div>
         <div class="extra content">Open Genres</div>
+      </a>
+      <a class="ui card" href="galleries.php">
+        <div class="content">
+            <div class="header">Galleries</div>
+            <div class="description">View gallery details, add galleries, and manage gallery records.</div>
+        </div>
+        <div class="extra content">Open Galleries</div>
+      </a>
+      <a class="ui card" href="eras.php">
+        <div class="content">
+            <div class="header">Eras</div>
+            <div class="description">View era details, add eras, and manage era records.</div>
+        </div>
+        <div class="extra content">Open Eras</div>
+      </a>
+      <a class="ui card" href="subjects.php">
+        <div class="content">
+          <div class="header">Subjects</div>
+          <div class="description">
+            View subject details, add new subjects, and delete subjects.
+          </div>
+        </div>
+        <div class="extra content">Open Subjects</div>
+      </a>
+      <a class="ui card" href="art-painting-genres.php">
+        <div class="content">
+          <div class="header">Painting-Genres</div>
+          <div class="description">
+            View painting-genre details, add new links between paintings and genres, and delete painting-genre links.
+          </div>
+        </div>
+        <div class="extra content">Open Painting-Genres</div>
+      </a>
+            <a class="ui card" href="art-painting-subjects.php">
+        <div class="content">
+          <div class="header">Painting-Subjects</div>
+          <div class="description">
+            View painting-subject details, add new links between paintings and subjects, and delete painting-subject links.
+          </div>
+        </div>
+        <div class="extra content">Open Painting-Subjects</div>
       </a>
     </div>
   </div>
