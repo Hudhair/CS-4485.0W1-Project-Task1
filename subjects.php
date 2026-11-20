@@ -20,6 +20,20 @@ $selectedSubject = isset($_GET['subject'])
     ? trim($_GET['subject'])
     : "";
 
+$sort = $_GET['sort'] ?? 'asc';
+
+if ($sort !== 'asc' && $sort !== 'desc') {
+    $sort = 'asc';
+}
+
+$perPage = 5;
+
+$page = filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT);
+
+if (!$page || $page < 1) {
+    $page = 1;
+}
+
 
 
 // SECTION 2: ADD SUBJECT
@@ -96,12 +110,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // SECTION 4: VIEW ALL SUBJECTS
 // Retrieve unique subject names in alphabetical order
 
+$countStmt = $pdo->query(
+    "SELECT COUNT(*) FROM
+     (SELECT DISTINCT SubjectName FROM subjects) AS uniqueSubjects"
+);
 
-$stmt = $pdo->query(
+$totalSubjects = (int)$countStmt->fetchColumn();
+
+$totalPages = max(1, (int)ceil($totalSubjects / $perPage));
+
+if ($page > $totalPages) {
+    $page = $totalPages;
+}
+
+$offset = ($page - 1) * $perPage;
+
+$sortDirection = ($sort === 'desc') ? 'DESC' : 'ASC';
+
+$stmt = $pdo->prepare(
     "SELECT DISTINCT SubjectName
      FROM subjects
-     ORDER BY SubjectName"
+     ORDER BY SubjectName $sortDirection
+     LIMIT :limit OFFSET :offset"
 );
+
+$stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+$stmt->execute();
 
 $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -112,10 +147,17 @@ $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $subjectExists = false;
 
-foreach ($subjects as $subject) {
-    if ($subject['SubjectName'] === $selectedSubject) {
+if ($selectedSubject !== "") {
+
+    $checkSubject = $pdo->prepare(
+        "SELECT COUNT(*) FROM subjects
+         WHERE BINARY SubjectName = BINARY ?"
+    );
+
+    $checkSubject->execute([$selectedSubject]);
+
+    if ($checkSubject->fetchColumn() > 0) {
         $subjectExists = true;
-        break;
     }
 }
 
@@ -181,15 +223,39 @@ function escapeHTML($value) {
         .subject-item:last-child {
             border-bottom: none;
         }
+
+        .pagination-controls {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .pagination-controls .button {
+            margin: 3px;
+        }
     </style>
 </head>
 
 <body>
 <div class="page-container">
 
-    <h1 class="ui header">
-        Art Gallery - Subjects
-    </h1>
+    <div class="ui secondary segment">
+
+        <h1>Art Gallery - Subjects</h1>
+
+        <div class="ui small horizontal link list page-links">
+            <a class="item" href="index.php">Home</a>
+            <a class="item" href="artist.php">Artists</a>
+            <a class="item" href="paintings.php">Paintings</a>
+            <a class="item" href="genres.php">Genres</a>
+            <a class="item" href="eras.php">Eras</a>
+            <a class="item" href="galleries.php">Galleries</a>
+            <a class="item" href="subjects.php">Subjects</a>
+            <a class="item" href="art-painting-genres.php">Painting Genres</a>
+            <a class="item" href="art-painting-subjects.php">Painting Subjects</a>
+        </div>
+
+    </div>
+
 
     <!-- =====================================================
          SECTION 7: ADD SUBJECT USER INTERFACE
@@ -244,8 +310,35 @@ function escapeHTML($value) {
         <div class="six wide column">
             <div class="ui segment">
                 <h3 class="ui header">
-                    Subjects (<?= count($subjects) ?>)
+                    Subjects (<?= $totalSubjects ?>)
                 </h3>
+
+                <form class="ui form" method="get">
+
+                    <div class="field">
+
+                        <label for="sort">Sort Subjects</label>
+
+                        <select
+                            id="sort"
+                            name="sort"
+                            onchange="this.form.submit()"
+                        >
+                            <option value="asc"
+                                <?= $sort === 'asc' ? 'selected' : '' ?>>
+                                Name (A-Z)
+                            </option>
+
+                            <option value="desc"
+                                <?= $sort === 'desc' ? 'selected' : '' ?>>
+                                Name (Z-A)
+                            </option>
+                        </select>
+
+                    </div>
+
+                </form>
+
 
                 <div class="subject-list">
 
@@ -267,7 +360,7 @@ function escapeHTML($value) {
 
                             <a
                                 class="subject-item <?= $isActive ? 'active' : '' ?>"
-                                href="subjects.php?subject=<?= urlencode($subjectName) ?>"
+                                href="subjects.php?subject=<?= urlencode($subjectName) ?>&sort=<?= urlencode($sort) ?>&page=<?= $page ?>"
                             >
                                 <?= escapeHTML($subjectName) ?>
                             </a>
@@ -277,6 +370,52 @@ function escapeHTML($value) {
                     <?php endif; ?>
 
                 </div>
+
+
+                <?php if ($totalSubjects > 0): ?>
+
+                    <p style="text-align: center; margin-top: 15px;">
+                        Showing <?= $offset + 1 ?>
+                        -
+                        <?= min($offset + $perPage, $totalSubjects) ?>
+                        of <?= $totalSubjects ?> subjects
+                    </p>
+
+                <?php endif; ?>
+
+
+                <?php if ($totalPages > 1): ?>
+
+                    <div class="pagination-controls">
+
+                        <?php if ($page > 1): ?>
+
+                            <a
+                                class="ui small button"
+                                href="subjects.php?page=<?= $page - 1 ?>&sort=<?= urlencode($sort) ?><?= $selectedSubject !== '' ? '&subject=' . urlencode($selectedSubject) : '' ?>"
+                            >
+                                Previous
+                            </a>
+
+                        <?php endif; ?>
+
+                        Page <?= $page ?> of <?= $totalPages ?>
+
+                        <?php if ($page < $totalPages): ?>
+
+                            <a
+                                class="ui small primary button"
+                                href="subjects.php?page=<?= $page + 1 ?>&sort=<?= urlencode($sort) ?><?= $selectedSubject !== '' ? '&subject=' . urlencode($selectedSubject) : '' ?>"
+                            >
+                                Next
+                            </a>
+
+                        <?php endif; ?>
+
+                    </div>
+
+                <?php endif; ?>
+
             </div>
         </div>
 
