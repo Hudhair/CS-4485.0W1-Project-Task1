@@ -2,29 +2,15 @@
   require_once('header.php');
 
   require_once('config.php');
-
   require_once('art-sql.php');
+
+  require_once('artist-links.php');
   require_once('artist-add.php');
   require_once('artist-edit.php');
 
   
 
-  function link_artists() {
-	$sql_statement = 'select * from artists order by LastName';
-	$result = sql_execute($sql_statement);
 
-	while( $row = $result->fetch() ) {
-		$id = $row['ArtistID'];
-		$name = $row['FirstName'].' '.$row['LastName'];
-        	$classes = 'item';
-        	if (isset($_GET['id']) && $_GET['id'] == $id)
-          		$classes .= ' active';
-        	$goto = $_SERVER['SCRIPT_NAME'].'?id='.$id;
-
-        	$link = '<a href="%s" class="%s">%s</a>';
-        	echo sprintf($link, $goto, $classes, $name);
-	}
-  }
 
   function delete_artist() {
     if (!isset($_GET['id']) || !isset($_GET['delete']) )
@@ -138,7 +124,7 @@ if (isset($_GET['id']) ) {
          <div class="ui grid">
            <div class="four wide column">
               <div class="ui link list">
-               <?php link_artists(); ?>
+               <?php artist_links(); ?>
               </div>
            </div>
            <div class="twelve wide column">

@@ -3,13 +3,15 @@
   require_once('header.php');
   require_once('art-sql.php');
 
-  require_once('genre-edit.php');
+  require_once('genres-links.php');
+  require_once('genres-edit.php');
+
 
 /*
  Displays the list of artist links on the left-side of page
 */
 function link_genres() {
-	$sql_statement = "select * from genres order by GenreName";
+	$sql_statement = "select * from genres order by GenreName desc";
 	$result = sql_execute($sql_statement);
 	while ($row = $result->fetch()) {
             $id = $row['GenreID'];
@@ -133,7 +135,7 @@ function delete_genre() {
          <div class="ui grid">
            <div class="four wide column">
               <div class="ui link list">
-                 <?php link_genres(); ?>
+                 <?php genres_links(); ?>
               </div>
            </div>
            <div class="twelve wide column">
