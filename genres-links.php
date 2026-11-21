@@ -4,7 +4,7 @@ require_once('config.php');
 require_once('art-sql.php');
 
 $max_pages = 0;
-$records_per_page = 10;
+$records_per_page = 20;
 
 $query = [];
 
@@ -36,9 +36,8 @@ function genres_links_sql() {
 	$sort_by = $query['sort_name'] ? 'GenreName' : 'GenreID';
 	$sort_direction = $query['sort_asc'] ? 'ASC' : 'DESC';
 	$min = $query['at_page'] * $records_per_page;
-	$max = $min + $records_per_page;
 
-	$sql_statement = sprintf('select * from genres order by %s %s limit '.$min.', '.$max.';', $sort_by, $sort_direction);
+	$sql_statement = sprintf('select * from genres order by %s %s limit '.$min.', '.$records_per_page.';', $sort_by, $sort_direction);
 	return $sql_statement;
 }
 
