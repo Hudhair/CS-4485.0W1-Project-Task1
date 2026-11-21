@@ -14,7 +14,8 @@ function outputGenres() {
 		INNER JOIN Genres g ON (p.GenreID = g.GenreID) limit 0,1000";
          $result = $pdo->query($sql);
          while ($row = $result->fetch()) {
-            echo '<a href="' . $_SERVER["SCRIPT_NAME"] . '?id=' . $row['GenreID'] . '" class="';
+            // Reset to page=1 when switching genres
+            echo '<a href="' . $_SERVER["SCRIPT_NAME"] . '?id=' . $row['GenreID'] . '&page=1" class="';
             if (isset($_GET['id']) && $_GET['id'] == $row['GenreID']) echo 'active ';
             echo 'item">';
             echo $row['GenreName'] . '</a>';
@@ -25,6 +26,7 @@ function outputGenres() {
       die( $e->getMessage() );
    }
 }
+
 /*
  Deletes a painting-genre link from the database
 */
@@ -89,8 +91,27 @@ function addPaintingGenre() {
   }
 }
 
+/* Displays total count of paintings */
+function getPaintingsGenreCount() {
+   $total = 0;
+   try {
+      $pdo = new PDO(DBCONNSTRING,DBUSER,DBPASS);
+      $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+      
+      $sql = 'SELECT COUNT(*) as total FROM Paintinggenres';
+      $statement = $pdo->query($sql);
+      $row = $statement->fetch();
+      $total = $row['total'];
+      $pdo = null;
+   }
+   catch (PDOException $e) {
+      // Return 0 on error
+   }
+   return $total;
+}
+
 /*
- Displays the list of paintings for the artist id specified in the id query string
+ Displays the list of paintings for the artist/genre id specified, limited to 5 per page
 */
 function outputPaintings() {
    try {
@@ -98,18 +119,51 @@ function outputPaintings() {
          $pdo = new PDO(DBCONNSTRING,DBUSER,DBPASS);
          $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
          
+         $id = (int)$_GET['id'];
+         
+         $limit = 5;
+         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+         if ($page < 1) $page = 1;
+         $offset = ($page - 1) * $limit;
+
+         $countSql = 'SELECT COUNT(*) as total 
+                      FROM Paintings p
+                      INNER JOIN Paintinggenres p2 ON (p.PaintingID = p2.PaintingID)
+                      WHERE GenreID = :id';
+         $countStmt = $pdo->prepare($countSql);
+         $countStmt->bindValue(':id', $id, PDO::PARAM_INT);
+         $countStmt->execute();
+         $totalRow = $countStmt->fetch();
+         $totalPaintings = $totalRow['total'];
+         $totalPages = ceil($totalPaintings / $limit);
+
          $sql = 'SELECT * 
-		FROM Paintings p
-		INNER JOIN Paintinggenres p2 ON (p.PaintingID = p2.PaintingID)
-		WHERE GenreID=:id';
-         $id = $_GET['id'];
+                 FROM Paintings p
+                 INNER JOIN Paintinggenres p2 ON (p.PaintingID = p2.PaintingID)
+                 WHERE GenreID = :id
+                 LIMIT ' . $limit . ' OFFSET ' . $offset;
+                 
          $statement = $pdo->prepare($sql);
-         $statement->bindValue(':id', $id);
+         $statement->bindValue(':id', $id, PDO::PARAM_INT);
          $statement->execute();
 
+         // Output each painting
          while ($row = $statement->fetch()) {
             outputSinglePainting($row);         
          }
+
+         if ($totalPages > 1) {
+            echo '<div class="ui pagination menu" style="margin-top: 20px;">';
+            if ($page > 1) {
+               echo '<a class="item" href="' . $_SERVER["SCRIPT_NAME"] . '?id=' . $id . '&page=' . ($page - 1) . '">&laquo; Previous</a>';
+            }
+            echo '<span class="item">Page ' . $page . ' of ' . $totalPages . '</span>';
+            if ($page < $totalPages) {
+               echo '<a class="item" href="' . $_SERVER["SCRIPT_NAME"] . '?id=' . $id . '&page=' . ($page + 1) . '">Next &raquo;</a>';
+            }
+            echo '</div>';
+         }
+
          $pdo = null;
       }
    }
@@ -124,7 +178,7 @@ function outputPaintings() {
 function outputSinglePainting($row) {
    echo '<div class="item">';
    echo '<div class="image">';
-   echo '<img  src="images/art/works/square-medium/' . $row['ImageFileName'] .'.jpg">';
+   echo '<img src="images/art/works/square-medium/' . $row['ImageFileName'] .'.jpg">';
    echo '</div>';
    echo '<div class="content">';
    echo '<h4 class="header">';
@@ -135,7 +189,7 @@ function outputSinglePainting($row) {
    echo '</p>';
    echo '</div>';  // end class=content
    echo '</div>';  // end class=item
-  $r0 = htmlspecialchars($row['PaintingID']);
+   $r0 = htmlspecialchars($row['PaintingID']);
     echo <<<_END
   <form action='art-painting-genres.php' method='post'>
   <input type='hidden' name='delete' value='yes'>
@@ -172,7 +226,7 @@ function sanitize_post_value($pdo, $var)
    <?php addPaintingGenre(); ?>
    <main class="ui container">
       <div class="ui secondary segment">
-         <?php echo '<h1>Welcome to the Art Gallery, Genre-Painting section' . $_SESSION['forename'] . ' ' . $_SESSION['surname'] . '</h1>'; ?>
+         <?php echo '<h1>Welcome to the Art Gallery, Genre-Painting section ' . (isset($_SESSION['forename']) ? $_SESSION['forename'] . ' ' . $_SESSION['surname'] : '') . '</h1>'; ?>
       </div>
       <div class="ui segment">
          <div class="ui grid">
@@ -190,5 +244,12 @@ function sanitize_post_value($pdo, $var)
       </div>
    </main>
 
+   <div class="ui container" style="margin-top: 20px; margin-bottom: 40px; text-align: center;">
+      <div class="ui segment">
+         <p style="font-size: 16px; margin: 0;">
+            Total objects in the Painting-Subjects database: <strong><?php echo getPaintingsGenreCount(); ?></strong>
+         </p>
+      </div>
+   </div>
 </body>
 </html>
