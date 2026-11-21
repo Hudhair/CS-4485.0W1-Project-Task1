@@ -40,7 +40,7 @@ if ($search !== '') {
     $stmt->execute();
 }
 $list = $stmt->fetchAll();
-$totalPaintings = count($list);
+$totalPaintings = (int)$db->query('SELECT COUNT(*) FROM Paintings')->fetchColumn();
 function painting_sorted_url($paintingId, $sort, $direction, $search) {
     return 'paintings.php?' . http_build_query([
         'id' => (int)$paintingId, 'sort' => $sort, 'direction' => $direction, 'q' => $search
@@ -59,7 +59,7 @@ painting_header('Paintings');
 <?php if ($notice): ?><div class="ui positive message"><?= painting_h($notice) ?></div><?php endif; ?>
 <div class="ui segment">
   <div class="ui stackable grid middle aligned">
-    <div class="sixteen wide column">
+    <div class="twelve wide column">
       <form class="ui form" method="get" action="paintings.php">
         <?php if ($id !== null): ?><input type="hidden" name="id" value="<?= (int)$id ?>"><?php endif; ?>
         <?php if ($search !== ''): ?><input type="hidden" name="q" value="<?= painting_h($search) ?>"><?php endif; ?>
@@ -84,13 +84,19 @@ painting_header('Paintings');
       </form>
       <a class="ui button" href="painting-add.php">Add a Painting</a>
     </div>
+    <div class="four wide column">
+      <div class="ui small statistic">
+        <div class="value"><?= $totalPaintings ?></div>
+        <div class="label">Total Paintings</div>
+      </div>
+    </div>
   </div>
 </div>
   <div class="ui segment">
   <div class="ui stackable grid">
     <aside class="four wide column">
       <div class="ui segment">
-        <h3 class="ui dividing header">Paintings (<?= $totalPaintings ?>)</h3>
+        <h3 class="ui dividing header">Paintings (<?= count($list) ?>)</h3>
         <!-- submit search to filter paintings -->
         <form class="ui form" method="get" action="paintings.php" id="paintingSearchForm" style="margin-bottom:1rem">
           <input type="hidden" name="sort" value="<?= painting_h($sort) ?>">
