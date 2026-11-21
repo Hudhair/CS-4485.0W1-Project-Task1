@@ -1,22 +1,19 @@
 <?php
   require_once("config.php");
+  require_once('header.php');
+  require_once('art-sql.php');
 
-  // Create a connection to the database
-  function create_connection() {
-    $pdo = new PDO(DBCONNSTRING, DBUSER, DBPASS);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    return $pdo;
-  }
+  require_once('genres-links.php');
+  require_once('genres-edit.php');
+
 
 /*
  Displays the list of artist links on the left-side of page
 */
 function link_genres() {
-   try {
-         $pdo = create_connection();
-         $sql = "select * from genres order by GenreName";
-         $result = $pdo->query($sql);
-         while ($row = $result->fetch()) {
+	$sql_statement = "select * from genres order by GenreName desc";
+	$result = sql_execute($sql_statement);
+	while ($row = $result->fetch()) {
             $id = $row['GenreID'];
             $goto = $_SERVER['SCRIPT_NAME'].'?id='.$id;
             $classes = 'item';
@@ -27,27 +24,20 @@ function link_genres() {
             $format = '<a href="%s" class="%s">%s</a>';
             echo sprintf($format, $goto, $classes, $content);
          }
-         $pdo = null;
-   } catch (PDOException $e)
-     { die( $e->getMessage() ); }
 }
 
 function print_genre() {
   $id = $_GET['id'];
+  $row = sql_get_genre($id);
 
-  try {
-    $pdo = create_connection();
-    $sql = sprintf('select * from genres where GenreID=%s;',$id);
-    $row = $pdo->query($sql)->fetch();
+  if (empty($row))
+    return;
 
-    if (empty($row))
-      return;
-
-    $name = $row['GenreName'];
-    $desc = $row['Description'];
-    $link = $row['Link'];
+  $name = $row['GenreName'];
+  $desc = $row['Description'];
+  $link = $row['Link'];
     
-    $format = '<div class="item"><div class="content"><h4 class="header">[%s] %s</h4>
+  $format = '<div class="item"><div class="content"><h4 class="header">[%s] %s</h4>
       <div class="description">
        <p><strong>Description: </strong>%s</p>
        <p><strong>Link: </strong>%s</p>
@@ -55,47 +45,24 @@ function print_genre() {
      </div>
     </div>';
     
-    echo sprintf($format,$id, $name, $desc, $link);
-
-  }  catch (PDOException $e)
-  { die($e->getMessage() ); }
+    echo sprintf($format,$id, $name, htmlspecialchars_decode($desc), $link);
 }
 
-function form_edit_genre() {
-  $id = $_GET['id'];
-  $form = '<div class="item"><form action="%s" method="post">
-            <label for="column"><strong>Edit:</strong></label>
-             <select id="column" name="column">
-              <option value="default">a field.</option>
-              <option value="GenreName">Genre Name</option>
-              <option value="Description">Description</option>
-              <option value="Link">Link</option>
-             </select>
-             <input type="text" id="value" name="value">
-             <input type="submit" value="Submit">
-            </form></div>';
-
-  $goto = $_SERVER['SCRIPT_NAME'].'?id='.$id.'&edit=1';
-  echo sprintf($form, $goto);
-}
 
 function form_delete_genre() {
   $id = $_GET['id'];
-  try {
-    $pdo = create_connection();
-    $sql = sprintf('select * from Genres where GenreID=%s;',$id);
-    $row = $pdo->query($sql)->fetch();
-    if (empty($row))
-      return;
+  $sql_statement = sprintf('select * from Genres where GenreID=%s;',$id);
+  $result = sql_execute($sql_statement);
 
-    $name = $row['GenreName'];
-    $output = '<div class="item"><a href="%s?id=%s&delete=1" class="ui button">Delete %s</a></div>';
-    $goto = $_SERVER['SCRIPT_NAME'];
-    echo sprintf($output, $goto, $id, $name);
+  $row = $result->fetch();
+  if (empty($row))
+    return;
 
-  } catch (PDOException $e) 
-  { die($e->getMessage() ); }
-}
+  $name = $row['GenreName'];
+  $output = '<div class="item"><a href="%s?id=%s&delete=1" class="ui button">Delete %s</a></div>';
+  $goto = $_SERVER['SCRIPT_NAME'];
+  echo sprintf($output, $goto, $id, $name);
+  }
 
 function form_add_genre() {
   $goto = $_SERVER['SCRIPT_NAME'] . '?';
@@ -130,58 +97,23 @@ function add_genre() {
   if (isset($_POST['Link']) && trim($_POST['Link']) != '')
     $link = '"'.trim($_POST['Link']).'"';
 
-  $sql = sprintf('insert into genres (GenreName, Description, Link) values (%s, %s, %s);', $name, $desc, $link);
-  try {
-    $pdo = create_connection();
-    $result = $pdo->query($sql);
-  } catch (PDOException $e)
-    { die($e->getMessage()); }
+  $sql_statement = sprintf('insert into genres (GenreName, Description, Link) values (%s, %s, %s);', $name, $desc, $link);
+  $result = sql_execute($sql_statement);
 }
 
-function edit_genre() {
-  if (!isset($_GET['edit']) || !isset($_GET['id']) )
-    return;
-  $id = $_GET['id'];
-  if (!isset($_POST['column']) || $_POST['column'] == 'default')
-    return;
-  $col = $_POST['column'];
-  if (!isset($_POST['value']) || trim($_POST['value']) == '')
-    return;
-  $val = trim($_POST['value']);
-  
-  $sql = sprintf('update genres set %s = "%s" where GenreID=%s;', $col, $val, $id);
-  try {
-    $pdo = create_connection();
-    $pdo->query($sql);
-  } catch (PDOException $e)
-    { die($e->getMessage()); }
-
-}
 function delete_genre() {
   if (!isset($_GET['delete']) || !isset($_GET['id']) )
     return;
   $id = $_GET['id'];
-  $sql = sprintf('delete from genres where GenreID=%s;',$id);
-  try {
-    $pdo = create_connection();
-    $pdo->query($sql);
-    delete_genre_from_paintinggenres($id);
-  } catch (PDOException $e)
-  { die($e->getMessage()); }
-}
-function delete_genre_from_paintinggenres($genre_id) {
-  $sql = sprintf('update paintinggenres set GenreID = null where GenreID = %s;', $genre_id);
-  try {
-    $pdo = create_connection();
-    $pdo->query($sql);
-  } catch (PDOException $e)
-  { die($e->getMessage()); }
+  $sql_statement = sprintf('delete from genres where GenreID=%s;',$id);
+  $result = sql_execute($sql_statement);
 
+  $sql_statement = sprintf('update paintinggenres set GenreID = null where GenreID = %s;', $genre_id);
+  sql_execute($sql_statement);
 }
-
 
  add_genre();
- edit_genre();
+ genre_edit();
  delete_genre();
  
 ?>
@@ -195,22 +127,7 @@ function delete_genre_from_paintinggenres($genre_id) {
 </head>
 <body>
    <main class="ui container">
-      <div class="ui secondary segment">
-         <h1>Art Gallery - Genres</h1>
- 
-         <div class="ui small horizontal link list page-links">
-          <a class="item" href="index.php">Home</a>
-          <a class="item" href="artist.php">Artists</a>
-          <a class="item" href="paintings.php">Paintings</a>
-          <a class="item" href="genres.php">Genres</a>
-          <a class="item" href="eras.php">Eras</a>
-	  <a class="item" href="gallaries.php">Gallaries</a>
-	  <a class="item" href="subjects.php">Subjects</a>
-          <a class="item" href="art-painting-genres.php">Painting Genres</a>
-	  <a class="item" href="art-painting-subjects.php">Painting Subjects</a>
-
-         </div>
-      </div>
+	<?php add_header('Genres'); ?>
       <div class="ui segment">
          <div class="ui segment">
            <?php form_add_genre(); ?>
@@ -218,7 +135,7 @@ function delete_genre_from_paintinggenres($genre_id) {
          <div class="ui grid">
            <div class="four wide column">
               <div class="ui link list">
-                 <?php link_genres(); ?>
+                 <?php genres_links(); ?>
               </div>
            </div>
            <div class="twelve wide column">
@@ -226,7 +143,7 @@ function delete_genre_from_paintinggenres($genre_id) {
                 <?php 
   if (isset($_GET['id']) ) {
     print_genre();
-    form_edit_genre(); 
+    genre_edit_form(); 
     form_delete_genre();
   }
  ?>
