@@ -89,6 +89,24 @@ function addPaintingSubject() {
   }
 }
 
+/* Displays total count of paintings */
+function getPaintingsSubjectCount() {
+   $total = 0;
+   try {
+      $pdo = new PDO(DBCONNSTRING,DBUSER,DBPASS);
+      $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+      
+      $sql = 'SELECT COUNT(*) as total FROM Paintingsubjects';
+      $statement = $pdo->query($sql);
+      $row = $statement->fetch();
+      $total = $row['total'];
+      $pdo = null;
+   }
+   catch (PDOException $e) {
+      // Return 0 on error
+   }
+   return $total;
+}
 /*
  Displays the list of paintings for the artist id specified in the id query string
 */
@@ -98,24 +116,58 @@ function outputPaintings() {
          $pdo = new PDO(DBCONNSTRING,DBUSER,DBPASS);
          $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
          
+         $id = (int)$_GET['id'];
+         
+         $limit = 5;
+         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+         if ($page < 1) $page = 1;
+         $offset = ($page - 1) * $limit;
+
+         $countSql = 'SELECT COUNT(*) as total 
+                      FROM Paintings p
+                      INNER JOIN Paintingsubjects p2 ON (p.PaintingID = p2.PaintingID)
+                      WHERE SubjectID = :id';
+         $countStmt = $pdo->prepare($countSql);
+         $countStmt->bindValue(':id', $id, PDO::PARAM_INT);
+         $countStmt->execute();
+         $totalRow = $countStmt->fetch();
+         $totalPaintings = $totalRow['total'];
+         $totalPages = ceil($totalPaintings / $limit);
+
          $sql = 'SELECT * 
-		FROM Paintings p
-		INNER JOIN Paintingsubjects p2 ON (p.PaintingID = p2.PaintingID)
-		WHERE SubjectID=:id';
-         $id = $_GET['id'];
+                 FROM Paintings p
+                 INNER JOIN Paintingsubjects p2 ON (p.PaintingID = p2.PaintingID)
+                 WHERE SubjectID = :id
+                 LIMIT ' . $limit . ' OFFSET ' . $offset;
+                 
          $statement = $pdo->prepare($sql);
-         $statement->bindValue(':id', $id);
+         $statement->bindValue(':id', $id, PDO::PARAM_INT);
          $statement->execute();
 
+         // Output each painting
          while ($row = $statement->fetch()) {
             outputSinglePainting($row);         
          }
+
+         if ($totalPages > 1) {
+            echo '<div class="ui pagination menu" style="margin-top: 20px;">';
+            if ($page > 1) {
+               echo '<a class="item" href="' . $_SERVER["SCRIPT_NAME"] . '?id=' . $id . '&page=' . ($page - 1) . '">&laquo; Previous</a>';
+            }
+            echo '<span class="item">Page ' . $page . ' of ' . $totalPages . '</span>';
+            if ($page < $totalPages) {
+               echo '<a class="item" href="' . $_SERVER["SCRIPT_NAME"] . '?id=' . $id . '&page=' . ($page + 1) . '">Next &raquo;</a>';
+            }
+            echo '</div>';
+         }
+
          $pdo = null;
       }
    }
    catch (PDOException $e) {
       die( $e->getMessage() );
    }
+
 }
 
 /*
@@ -190,5 +242,12 @@ function sanitize_post_value($pdo, $var)
       </div>
    </main>
 
+   <div class="ui container" style="margin-top: 20px; margin-bottom: 40px; text-align: center;">
+      <div class="ui segment">
+         <p style="font-size: 16px; margin: 0;">
+            Total objects in the Painting-Subjects database: <strong><?php echo getPaintingsSubjectCount(); ?></strong>
+         </p>
+      </div>
+   </div>
 </body>
 </html>
