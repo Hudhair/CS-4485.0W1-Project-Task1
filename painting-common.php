@@ -61,6 +61,16 @@ function painting_fields(PDO $db, $post, $isNew) {
     foreach (['YearOfWork','Width','Height'] as $key) {
         $values[$key] = painting_optional_int($post[$key] ?? '', $key);
     }
+    $currentYear = (int)date('Y');
+    if ($values['YearOfWork'] !== null && $values['YearOfWork'] !== 0 &&
+        ($values['YearOfWork'] < 1000 || $values['YearOfWork'] > $currentYear)) {
+        throw new RuntimeException("Year of work must be 0 (unknown) or between 1000 and $currentYear.");
+    }
+    foreach (['Width', 'Height'] as $key) {
+        if ($values[$key] !== null && $values[$key] > 100000) {
+            throw new RuntimeException("$key must be 100000 or less.");
+        }
+    }
     foreach (['Cost','MSRP'] as $key) {
         $raw = trim((string)($post[$key] ?? ''));
         if ($raw === '') { $values[$key] = null; continue; }
@@ -68,6 +78,12 @@ function painting_fields(PDO $db, $post, $isNew) {
             throw new RuntimeException("$key must be a nonnegative amount with up to four decimal places.");
         }
         $values[$key] = $raw;
+    }
+    foreach (['MuseumLink', 'GoogleLink', 'WikiLink'] as $key) {
+        $url = $values[$key];
+        if ($url !== null && (!filter_var($url, FILTER_VALIDATE_URL) || !preg_match('/^https?:\/\//i', $url))) {
+            throw new RuntimeException("$key must be a valid URL beginning with http:// or https://.");
+        }
     }
     return $values;
 }
@@ -185,7 +201,7 @@ function painting_form($db, $record, $edit, $id, $post = []) {
     $values = $post ?: $record;
     ?>
     <p>PaintingID is assigned automatically and cannot be modified. Choose an existing artist, gallery and shape.</p>
-    <form class="ui form painting-form" method="post" action="<?= $edit ? 'painting-edit.php?id='.(int)$id : 'painting-add.php' ?>" enctype="multipart/form-data">
+    <form id="paintingForm" class="ui form painting-form" method="post" action="<?= $edit ? 'painting-edit.php?id='.(int)$id : 'painting-add.php' ?>" enctype="multipart/form-data" novalidate>
     <input type="hidden" name="csrf" value="<?= painting_h($_SESSION['paintings_csrf']) ?>">
     <?php if ($edit): ?><input type="hidden" name="PaintingID" value="<?= (int)$id ?>"><?php endif; ?>
     <div class="three fields">
@@ -201,10 +217,17 @@ function painting_form($db, $record, $edit, $id, $post = []) {
     <div class="field"><label for="<?= $key ?>"><?= painting_h($label) ?><?= in_array($key,['Title','ImageFileName'],true) ? ' *' : '' ?></label>
     <?php if (in_array($key,['Description','Excerpt','GoogleDescription'],true)): ?>
       <textarea rows="3" name="<?= $key ?>" id="<?= $key ?>"><?= painting_h($values[$key] ?? '') ?></textarea>
-    <?php else: ?>
-      <input type="<?= in_array($key,['YearOfWork','Width','Height'],true) ? 'number' : 'text' ?>" name="<?= $key ?>" id="<?= $key ?>"
+    <?php else:
+      $numeric = in_array($key, ['YearOfWork','Width','Height'], true);
+      $money = in_array($key, ['Cost','MSRP'], true);
+      $url = in_array($key, ['MuseumLink','GoogleLink','WikiLink'], true);
+      $type = $numeric || $money ? 'number' : ($url ? 'url' : 'text');
+      $limits = $numeric ? ' min="0" max="100000" step="1"' : ($money ? ' min="0" max="999999999999999.9999" step="0.0001"' : '');
+      if ($key === 'YearOfWork') $limits = ' min="0" max="' . date('Y') . '" step="1"';
+    ?>
+      <input type="<?= $type ?>" name="<?= $key ?>" id="<?= $key ?>"
       value="<?= painting_h($values[$key] ?? '') ?>" <?= in_array($key,['Title','ImageFileName'],true) ? 'required' : '' ?>
-      <?= in_array($key,['YearOfWork','Width','Height'],true) ? 'min="0"' : '' ?> maxlength="<?= $key === 'ImageFileName' ? 50 : 255 ?>">
+      <?= $limits ?> <?= in_array($key,['MuseumLink','GoogleLink','WikiLink'],true) ? 'placeholder="https://example.com"' : '' ?> maxlength="<?= $key === 'ImageFileName' ? 50 : 255 ?>">
     <?php endif; ?></div>
     <?php endforeach; ?>
     <div class="field"><label for="image">Optional JPEG image upload (max 5 MB)</label>
@@ -213,4 +236,44 @@ function painting_form($db, $record, $edit, $id, $post = []) {
     <button type="submit" class="ui primary button"><?= $edit ? 'Save Changes' : 'Add Painting' ?></button>
     <a class="ui button" href="<?= $edit ? painting_url($id) : 'paintings.php' ?>">Cancel</a>
     </form>
+    <script>
+    (function () {
+        const form = document.getElementById('paintingForm');
+        if (!form) return;
+        const currentYear = new Date().getFullYear();
+        form.addEventListener('submit', function (event) {
+            const errors = [];
+            const title = form.elements.Title.value.trim();
+            const imageName = form.elements.ImageFileName.value.trim();
+            if (!title) errors.push('Painting title is required.');
+            if (!imageName) errors.push('Image filename is required.');
+            if (imageName && !/^[a-zA-Z0-9_-]+$/.test(imageName)) errors.push('Image filename may contain only letters, numbers, underscores, and hyphens.');
+            const yearText = form.elements.YearOfWork.value.trim();
+            if (yearText !== '') {
+                const year = Number(yearText);
+                if (!Number.isInteger(year) || year < 0 || year > currentYear) errors.push('Year of work must be a whole number from 0 to ' + currentYear + '.');
+                else if (year !== 0 && year < 1000) errors.push('Enter 0 for unknown, or a year of at least 1000.');
+            }
+            for (const key of ['Width', 'Height']) {
+                const raw = form.elements[key].value.trim();
+                if (raw !== '') {
+                    const number = Number(raw);
+                    if (!Number.isInteger(number) || number < 0 || number > 100000) errors.push(key + ' must be a whole number between 0 and 100000.');
+                }
+            }
+            for (const key of ['Cost', 'MSRP']) {
+                const raw = form.elements[key].value.trim();
+                if (raw !== '' && (!/^[0-9]{1,15}(?:\.[0-9]{1,4})?$/.test(raw) || Number(raw) < 0)) errors.push(key + ' must be a nonnegative amount with up to four decimal places.');
+            }
+            for (const key of ['MuseumLink', 'GoogleLink', 'WikiLink']) {
+                const raw = form.elements[key].value.trim();
+                if (raw !== '') {
+                    try { const url = new URL(raw); if (!['http:', 'https:'].includes(url.protocol)) throw new Error(); }
+                    catch (_) { errors.push(key + ' must be a valid http:// or https:// URL.'); }
+                }
+            }
+            if (errors.length) { event.preventDefault(); alert(errors.join('\n')); }
+        });
+    })();
+    </script>
 <?php }
