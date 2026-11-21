@@ -9,6 +9,9 @@
 </head>
 <body>
 <main class="ui container">
+  <div class="top-bar clearfix" style="overflow: hidden;">
+    <a href="login.php" class="ui primary right floated button">Log Out</a>
+  </div>
   <div class="ui secondary segment"><h1>Art Gallery - Admin Home</h1></div>
   <div class="ui segment">
     <h2 class="ui header">Choose an Admin Option</h2>
