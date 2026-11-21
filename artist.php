@@ -119,7 +119,8 @@ if (isset($_GET['id']) ) {
       <?php add_header('Artist'); ?>
       <div class="ui segment">
          <div class="ui segment">
-           <?php artist_add_form(); ?>
+	   <?php require_once('artist-fetch.php'); ?>
+           <?php artist_add_form(); artist_fetch_button();?>
          </div>
          <div class="ui grid">
            <div class="four wide column">

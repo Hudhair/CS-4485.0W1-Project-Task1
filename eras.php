@@ -2,6 +2,29 @@
 
 require_once('config.php');
 
+/*
+ Sorting and pagination settings
+*/
+$allowedSorts = array('EraName', 'EraYears');
+
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'EraName';
+$order = isset($_GET['order']) ? strtoupper($_GET['order']) : 'ASC';
+$page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+
+if (!in_array($sort, $allowedSorts)) {
+   $sort = 'EraName';
+}
+
+if ($order != 'ASC' && $order != 'DESC') {
+   $order = 'ASC';
+}
+
+if ($page < 1) {
+   $page = 1;
+}
+
+$perPage = 3;
+
 
 /*
  Add an era
@@ -72,30 +95,71 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete'])) {
 
 
 /*
- Displays the list of eras
+ Returns the total number of eras
 */
-function outputEras() {
+function getTotalEras() {
 
    try {
 
       $pdo = new PDO(DBCONNSTRING, DBUSER, DBPASS);
+      $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-      $pdo->setAttribute(
-         PDO::ATTR_ERRMODE,
-         PDO::ERRMODE_EXCEPTION
-      );
+      $sql = "SELECT COUNT(*) FROM Eras";
+      $result = $pdo->query($sql);
+      $total = (int) $result->fetchColumn();
+
+      $pdo = null;
+
+      return $total;
+   }
+
+   catch (PDOException $e) {
+      die($e->getMessage());
+   }
+}
+
+
+/*
+ Displays the list of eras in sorted page-by-page order
+*/
+function outputEras($sort, $order, $page, $perPage) {
+
+   try {
+
+      $pdo = new PDO(DBCONNSTRING, DBUSER, DBPASS);
+      $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+      $totalEras = getTotalEras();
+      $totalPages = max(1, (int) ceil($totalEras / $perPage));
+
+      if ($page > $totalPages) {
+         $page = $totalPages;
+      }
+
+      $offset = ($page - 1) * $perPage;
 
       $sql = "SELECT * FROM Eras
-              ORDER BY EraName";
+              ORDER BY $sort $order
+              LIMIT :limit OFFSET :offset";
 
-      $result = $pdo->query($sql);
+      $statement = $pdo->prepare($sql);
+      $statement->bindValue(':limit', $perPage, PDO::PARAM_INT);
+      $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+      $statement->execute();
 
-      while ($row = $result->fetch()) {
+      while ($row = $statement->fetch()) {
+
+         $params = array(
+            'era' => $row['EraName'],
+            'sort' => $sort,
+            'order' => $order,
+            'page' => $page
+         );
 
          echo '<a href="' .
               $_SERVER["SCRIPT_NAME"] .
-              '?era=' .
-              urlencode($row['EraName']) .
+              '?' .
+              http_build_query($params) .
               '" class="';
 
          if (isset($_GET['era']) &&
@@ -108,6 +172,10 @@ function outputEras() {
 
          echo htmlspecialchars($row['EraName']);
 
+         echo '<div class="description">';
+         echo htmlspecialchars($row['EraYears']);
+         echo '</div>';
+
          echo '</a>';
       }
 
@@ -117,6 +185,75 @@ function outputEras() {
    catch (PDOException $e) {
       die($e->getMessage());
    }
+}
+
+
+/*
+ Displays page-by-page navigation
+*/
+function outputPagination($sort, $order, $page, $perPage) {
+
+   $totalEras = getTotalEras();
+   $totalPages = max(1, (int) ceil($totalEras / $perPage));
+
+   if ($page > $totalPages) {
+      $page = $totalPages;
+   }
+
+   if ($totalPages <= 1) {
+      return;
+   }
+
+   echo '<div class="ui pagination menu">';
+
+   if ($page > 1) {
+
+      $previousParams = array(
+         'sort' => $sort,
+         'order' => $order,
+         'page' => $page - 1
+      );
+
+      echo '<a class="item" href="eras.php?' .
+           http_build_query($previousParams) .
+           '">Previous</a>';
+   }
+
+   for ($i = 1; $i <= $totalPages; $i++) {
+
+      $pageParams = array(
+         'sort' => $sort,
+         'order' => $order,
+         'page' => $i
+      );
+
+      echo '<a class="';
+
+      if ($i == $page) {
+         echo 'active ';
+      }
+
+      echo 'item" href="eras.php?' .
+           http_build_query($pageParams) .
+           '">' .
+           $i .
+           '</a>';
+   }
+
+   if ($page < $totalPages) {
+
+      $nextParams = array(
+         'sort' => $sort,
+         'order' => $order,
+         'page' => $page + 1
+      );
+
+      echo '<a class="item" href="eras.php?' .
+           http_build_query($nextParams) .
+           '">Next</a>';
+   }
+
+   echo '</div>';
 }
 
 
@@ -198,7 +335,7 @@ function outputEraDetails() {
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
 
 <head>
 
@@ -211,6 +348,35 @@ function outputEraDetails() {
 
    <link href="semantic/semantic.css"
          rel="stylesheet">
+
+   <style>
+
+      body {
+         padding-top: 20px;
+         padding-bottom: 40px;
+      }
+
+      .sort-buttons {
+         margin-top: 24px;
+      }
+
+      .pagination-area {
+         margin-top: 20px;
+      }
+
+      @media (max-width: 767px) {
+
+         body {
+            padding-left: 10px;
+            padding-right: 10px;
+         }
+
+         .sort-buttons {
+            margin-top: 10px;
+         }
+      }
+
+   </style>
 
 </head>
 
@@ -227,9 +393,91 @@ function outputEraDetails() {
    </div>
 
 
+   <!-- Sorting -->
+
    <div class="ui segment">
 
-      <div class="ui grid">
+      <h3>Sort Eras</h3>
+
+      <form class="ui form"
+            method="get"
+            action="eras.php">
+
+         <div class="ui stackable grid">
+
+            <div class="six wide column">
+
+               <div class="field">
+
+                  <label>Sort By</label>
+
+                  <select name="sort"
+                          class="ui dropdown">
+
+                     <option value="EraName"
+                        <?php if ($sort == 'EraName') echo 'selected'; ?>>
+                        Era Name
+                     </option>
+
+                     <option value="EraYears"
+                        <?php if ($sort == 'EraYears') echo 'selected'; ?>>
+                        Era Years
+                     </option>
+
+                  </select>
+
+               </div>
+
+            </div>
+
+
+            <div class="ten wide column sort-buttons">
+
+               <button type="submit"
+                       name="order"
+                       value="ASC"
+                       class="ui primary button">
+                  Ascending
+               </button>
+
+               <button type="submit"
+                       name="order"
+                       value="DESC"
+                       class="ui button">
+                  Descending
+               </button>
+
+            </div>
+
+         </div>
+
+      </form>
+
+   </div>
+
+
+   <!-- Summary report -->
+
+   <div class="ui segment">
+
+      <div class="ui statistic">
+
+         <div class="value">
+            <?php echo getTotalEras(); ?>
+         </div>
+
+         <div class="label">
+            Total Eras
+         </div>
+
+      </div>
+
+   </div>
+
+
+   <div class="ui segment">
+
+      <div class="ui stackable grid">
 
 
          <!-- Era list -->
@@ -240,7 +488,16 @@ function outputEraDetails() {
 
             <div class="ui link list">
 
-               <?php outputEras(); ?>
+               <?php outputEras($sort, $order, $page, $perPage); ?>
+
+            </div>
+
+
+            <!-- Pagination -->
+
+            <div class="pagination-area">
+
+               <?php outputPagination($sort, $order, $page, $perPage); ?>
 
             </div>
 
